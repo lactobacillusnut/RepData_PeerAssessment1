@@ -1,6 +1,6 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-author: "Bhan Lam (lactobacillusnut)"
+author: "lactobacillusnut"
 date: "09/06/2020"
 output: html_document
 keep_md: true
@@ -96,6 +96,98 @@ stepsbyinterval$interval[which.max(stepsbyinterval$meanSteps)]
 
 ## 3. Imputing missing values
 
+There are 2304 step values which are <span style="color: red;">*NA*</span> in the dataset, which is around 13.11% of the dataset. The <span style="color: red;">*NA*</span> values are replaced with the interval means. The steps "class" have been converted to double to accomodate the mean values. The new dataset is *imData*. 
 
+
+```{r impute}
+#Total number of NA values
+sum(is.na(data$steps))
+
+#Percentage of NA
+mean(is.na(data$steps)) * 100
+
+#impute NA using interval means
+imData <- data %>%
+    mutate(steps=if_else(is.na(steps),stepsbyinterval$meanSteps[match(interval,stepsbyinterval$interval)],as.double(steps)))
+
+```
+
+The analysis from part 1 is repeated. A comparison of the histograms reveal that there is a significant difference after imputing the data especially between 0 to 5000 and 10000 to 15000.
+
+```{r stepsbydayIm, echo=TRUE}
+
+#Transparent color
+c1 <- rgb(173,216,230,max = 255, alpha = 80, names = "lt.blue")
+c2 <- rgb(255,192,203, max = 255, alpha = 80, names = "lt.pink")
+
+# Total steps per day
+stepsbydayIm <- imData %>%
+    group_by(day=floor_date(date,"day")) %>%
+    summarize(totalSteps=sum(steps,na.rm = TRUE))
+
+#Plot both histograms
+hist(stepsbydayIm$totalSteps, col = c1, main = "Histogram of steps (Orignal v.s. Imputed)",xlab = "Steps")
+hist(stepsbyday$totalSteps, col = c2, add = TRUE)
+
+legend("topright",c("Imputed","Original"),col=c(c1, c2), lwd=10)
+
+#Report statistics
+summary(stepsbyday$totalSteps)
+```
+
+The mean and median of the imputed dataset also differs from the original dataset with all NA values ignored. The respective plots show that the missing values have been replaced after imputing. In terms of the summary statistics, imputing the dataset has increased the mean and median values as well as the 25th percentile values.
+
+```{r }
+#Mean per day
+meanbydayIm <- imData %>%
+    group_by(day=floor_date(date,"day")) %>%
+    summarize(meanSteps=mean(steps,na.rm = TRUE))
+
+plot(meanbydayIm$day,meanbydayIm$meanSteps,type = "l",col="steelblue",
+     main = "Mean steps as a function of days",xlab = "Days",
+     ylab="Mean Steps",lwd=2)
+lines(meanbyday$day,meanbyday$meanSteps,col="hotpink")
+
+legend("topleft",c("Imputed","Original"),col=c("steelblue","hotpink"),lwd=2)
+
+#Median per day
+medianbydayIm <- imData %>%
+    group_by(day=floor_date(date,"day")) %>%
+    summarize(medianSteps=median(steps,na.rm = TRUE))
+
+plot(medianbydayIm$day,medianbydayIm$medianSteps,type = "l",col="steelblue4",
+     main = "Median steps as a function of days",xlab = "Days",
+     ylab="Mean Steps",lwd=2)
+lines(medianbyday$day,medianbyday$medianSteps,col="hotpink4")
+
+legend("topleft",c("Imputed","Original"),col=c("steelblue4","hotpink4"),lwd=2)
+
+#Summary statitics of total steps by day (original)
+summary(stepsbyday$totalSteps)
+
+#Summary statitics of total steps by day (imputed)
+summary(stepsbydayIm$totalSteps)
+
+```
 
 ## 4. Are there differences in activity patterns between weekdays and weekends?
+
+To explore the difference in activity patterns between weekdays and weekends, a factor variable "DayType" is added to the imputed data. A panel plot is generated using ggplot2 to show the differences. Through observation, there seems to be more activity in the morning on weekdays and more activity in the afternoon for weekends.
+
+```{r weekends}
+wkndwdyData <- imData %>%
+    mutate(DayType=if_else(weekdays(date)=="Saturday" | weekdays(date)=="Sunday","weekend","weekday")) %>%
+    mutate(DayType=as.factor(DayType))
+
+stepsbyintervalDayType <- wkndwdyData %>%
+    group_by(interval,DayType) %>%
+    summarize(meanSteps=mean(steps,na.rm = TRUE))
+
+library(ggplot2)
+
+ggplot(stepsbyintervalDayType, aes(interval,meanSteps)) + geom_line() + facet_grid(rows = vars(DayType)) +
+    ylab("Mean Steps") + xlab("5-min Intervals") 
+
+
+```
+
