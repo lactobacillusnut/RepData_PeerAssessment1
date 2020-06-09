@@ -1,25 +1,101 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+author: "Bhan Lam (lactobacillusnut)"
+date: "09/06/2020"
+output: html_document
+keep_md: true
 ---
+
+## Reproducible Research: Course Project 1
+
+This document presents some exploratory analysis on data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day. The dataset can be downloaded from this [link](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip).
 
 
 ## Loading and preprocessing the data
 
+Firstly, download and unzip the dataset. Read the dataset into a tibble. Both the <span style="color: red;">*dplyr*</span> and <span style="color: red;">*lubridate*</span> packages are loaded. The date variable is mutated to the date class using the **ymd()** function.  
+
+```{r data}
+
+# download file
+if(!file.exists("repdata_data_activity.zip")) download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip","repdata_data_activity.zip")
+
+# Check if directory is available then unzip
+if(!file.exists("activity.csv")){
+    unzip("repdata_data_activity.zip")
+}
+
+library(dplyr)
+library(lubridate)
+
+data <- tbl_df(read.csv("activity.csv")) %>%
+    mutate(date = ymd(date))
+str(data)
+```
+
+## 1. What is mean total number of steps taken per day?
+
+The total number of steps taken per day is calculated and plotted as a histogram. The mean number of steps per day is plotted as a function of days. The broken lines indicate the missing values as a result of ommitting the NA values.
+
+```{r stepsbyday, echo=TRUE}
+
+# Total steps per day
+stepsbyday <- data %>%
+    group_by(day=floor_date(date,"day")) %>%
+    summarize(totalSteps=sum(steps,na.rm = TRUE))
+
+#Plot frequency distribution of steps
+hist(stepsbyday$totalSteps,main = "Histogram of steps", xlab = "Steps")
+
+```
+
+The mean and median per day is plotted in the following figure. The large number of NA values and 0s in the data results in the median values turning up as 0s. The summary statistics are shown below the figures.
+
+```{r meanMed}
+
+#Mean per day
+meanbyday <- data %>%
+    group_by(day=floor_date(date,"day")) %>%
+    summarize(meanSteps=mean(steps,na.rm = TRUE))
+
+#Median per day
+medianbyday <- data %>%
+    group_by(day=floor_date(date,"day")) %>%
+    summarize(medianSteps=median(steps,na.rm = T))
+
+#Plot Mean and Median as a fucntion of time
+plot(meanbyday$day,meanbyday$meanSteps,type = "l",col="hotpink",
+     main = "Mean and Median steps as a function of days",xlab = "Days",
+     ylab="")
+
+lines(medianbyday$day,medianbyday$medianSteps,type = "l",col="hotpink4")
+
+legend("topleft",c("Mean","Median"),col=c("hotpink","hotpink4"),lwd=2)
+
+#Summary statitics of total steps by day (original)
+summary(stepsbyday$totalSteps)
+
+```
+
+## 2. What is the average daily activity pattern?
+
+For each time interval, the mean number of steps across all days are calculated and plotted as a function of 5-min time intervals. The maximum average number of steps occurs at the 835 interval.
+
+```{r stepsbyinterval}
+stepsbyinterval <- data %>%
+    group_by(interval) %>%
+    summarize(meanSteps=mean(steps,na.rm = TRUE))
+
+plot(x=stepsbyinterval$interval,y=stepsbyinterval$meanSteps,type = "l",
+     ylab="Mean Steps",xlab = "5 Min Intervals")
+
+#Interval with largest mean
+stepsbyinterval$interval[which.max(stepsbyinterval$meanSteps)]
+
+```
+
+## 3. Imputing missing values
 
 
-## What is mean total number of steps taken per day?
 
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+## 4. Are there differences in activity patterns between weekdays and weekends?
